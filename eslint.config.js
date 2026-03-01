@@ -32,6 +32,8 @@ export default [
         AbortController: 'readonly',
         Event: 'readonly',
         CustomEvent: 'readonly',
+        FileReader: 'readonly',
+        PopStateEvent: 'readonly',
       },
     },
     rules: {
