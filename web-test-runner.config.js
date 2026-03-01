@@ -32,6 +32,9 @@ function mockPlugin() {
       if (context.path === '/src/services/permissions-api.js') {
         return fs.readFileSync(path.join(__dirname, 'test/mocks/permissions-api.js'), 'utf-8');
       }
+      if (context.path === '/src/services/user-access-api.js') {
+        return fs.readFileSync(path.join(__dirname, 'test/mocks/user-access-api.js'), 'utf-8');
+      }
     },
   };
 }
