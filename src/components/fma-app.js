@@ -1,9 +1,13 @@
 import { LitElement, html, css } from 'lit';
 import { initRouter } from '../router/index.js';
+import { authService } from '../services/auth-service.js';
+import { Router } from '@vaadin/router';
 
 export class FmaApp extends LitElement {
   static properties = {
     sidebarOpen: { type: Boolean, state: true },
+    _authenticated: { type: Boolean, state: true },
+    _userEmail: { type: String, state: true },
   };
 
   static styles = css`
@@ -67,6 +71,21 @@ export class FmaApp extends LitElement {
       display: flex;
       align-items: center;
       gap: var(--fma-space-sm, 0.5rem);
+    }
+
+    .logout-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      padding: var(--fma-space-xs, 0.25rem) var(--fma-space-sm, 0.5rem);
+      border-radius: var(--fma-radius, 4px);
+      font-size: var(--fma-font-size-sm, 0.875rem);
+      cursor: pointer;
+      transition: background var(--fma-transition, 200ms ease-in-out);
+    }
+
+    .logout-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
     }
 
     /* Sidebar */
@@ -139,6 +158,11 @@ export class FmaApp extends LitElement {
       margin-left: 0;
     }
 
+    /* Login layout (no header/sidebar) */
+    .login-layout {
+      min-height: 100vh;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .sidebar {
@@ -166,11 +190,42 @@ export class FmaApp extends LitElement {
   constructor() {
     super();
     this.sidebarOpen = true;
+    this._authenticated = false;
+    this._userEmail = '';
+    this._unsubscribe = null;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._unsubscribe = authService.subscribe((user) => {
+      this._authenticated = user !== null;
+      this._userEmail = user?.email ?? '';
+    });
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this._unsubscribe) {
+      this._unsubscribe();
+      this._unsubscribe = null;
+    }
   }
 
   firstUpdated() {
+    this._initRouterOnOutlet();
+  }
+
+  updated(changedProperties) {
+    if (changedProperties.has('_authenticated')) {
+      this._initRouterOnOutlet();
+    }
+  }
+
+  _initRouterOnOutlet() {
     const outlet = this.shadowRoot.querySelector('#outlet');
-    initRouter(outlet);
+    if (outlet) {
+      initRouter(outlet);
+    }
   }
 
   _toggleSidebar() {
@@ -183,7 +238,20 @@ export class FmaApp extends LitElement {
     }
   }
 
+  async _logout() {
+    await authService.logout();
+    Router.go('/login');
+  }
+
   render() {
+    if (!this._authenticated) {
+      return html`
+        <div class="login-layout">
+          <div id="outlet"></div>
+        </div>
+      `;
+    }
+
     return html`
       <header>
         <button class="menu-btn" @click=${this._toggleSidebar} aria-label="Toggle menu">
@@ -191,7 +259,10 @@ export class FmaApp extends LitElement {
         </button>
         <span class="logo">Firestore MyAdmin</span>
         <span class="spacer"></span>
-        <span class="user-info">Usuario</span>
+        <span class="user-info">
+          <span class="user-email">${this._userEmail}</span>
+          <button class="logout-btn" @click=${this._logout}>Salir</button>
+        </span>
       </header>
 
       <aside class="sidebar ${this.sidebarOpen ? 'open' : 'closed'}">
