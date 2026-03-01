@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { connectionService } from '../services/connection-service.js';
 import { firestoreApi } from '../services/firestore-api.js';
+import '../components/document-editor.js';
 
 export class FmaPageFirestore extends LitElement {
   static properties = {
@@ -14,6 +15,12 @@ export class FmaPageFirestore extends LitElement {
     _error: { type: String, state: true },
     _hasMore: { type: Boolean, state: true },
     _view: { type: String, state: true }, // 'collections' | 'documents' | 'document'
+    _editorOpen: { type: Boolean, state: true },
+    _editorMode: { type: String, state: true },
+    _editorFields: { type: Array, state: true },
+    _editorDocId: { type: String, state: true },
+    _confirmDelete: { type: Boolean, state: true },
+    _successMessage: { type: String, state: true },
   };
 
   static styles = css`
@@ -207,6 +214,79 @@ export class FmaPageFirestore extends LitElement {
       padding: var(--fma-space-xl, 2rem);
       color: var(--fma-text-secondary, #5f6368);
     }
+
+    .toolbar {
+      display: flex;
+      gap: var(--fma-space-sm, 0.5rem);
+      margin-bottom: var(--fma-space-md, 1rem);
+    }
+
+    .btn {
+      padding: var(--fma-space-xs, 0.25rem) var(--fma-space-sm, 0.5rem);
+      border: 1px solid var(--fma-border, #dadce0);
+      border-radius: var(--fma-radius, 4px);
+      background: var(--fma-surface, #fff);
+      font-size: var(--fma-font-size-sm, 0.875rem);
+      cursor: pointer;
+      color: var(--fma-text, #202124);
+      transition: background var(--fma-transition, 200ms ease-in-out);
+    }
+
+    .btn:hover {
+      background: var(--fma-bg, #f8f9fa);
+    }
+
+    .btn-primary {
+      background: var(--fma-primary, #1a73e8);
+      color: #fff;
+      border-color: var(--fma-primary, #1a73e8);
+    }
+
+    .btn-primary:hover {
+      background: var(--fma-primary-dark, #1557b0);
+    }
+
+    .btn-danger {
+      color: var(--fma-error, #d93025);
+      border-color: var(--fma-error, #d93025);
+    }
+
+    .btn-danger:hover {
+      background: #fce8e6;
+    }
+
+    .doc-actions {
+      display: flex;
+      gap: var(--fma-space-sm, 0.5rem);
+      padding: var(--fma-space-md, 1rem);
+      border-top: 1px solid var(--fma-border, #dadce0);
+    }
+
+    .confirm-delete {
+      background: #fce8e6;
+      padding: var(--fma-space-md, 1rem);
+      border-radius: var(--fma-radius, 4px);
+      margin-top: var(--fma-space-md, 1rem);
+    }
+
+    .confirm-delete p {
+      color: var(--fma-error, #d93025);
+      font-weight: 500;
+      margin: 0 0 var(--fma-space-sm, 0.5rem);
+    }
+
+    .confirm-actions {
+      display: flex;
+      gap: var(--fma-space-sm, 0.5rem);
+    }
+
+    .success {
+      background: #e6f4ea;
+      color: var(--fma-success, #34a853);
+      padding: var(--fma-space-sm, 0.5rem) var(--fma-space-md, 1rem);
+      border-radius: var(--fma-radius, 4px);
+      margin-bottom: var(--fma-space-md, 1rem);
+    }
   `;
 
   constructor() {
@@ -221,6 +301,12 @@ export class FmaPageFirestore extends LitElement {
     this._error = '';
     this._hasMore = false;
     this._view = 'collections';
+    this._editorOpen = false;
+    this._editorMode = 'create';
+    this._editorFields = [];
+    this._editorDocId = '';
+    this._confirmDelete = false;
+    this._successMessage = '';
   }
 
   onBeforeEnter(location) {
@@ -383,6 +469,94 @@ export class FmaPageFirestore extends LitElement {
       });
   }
 
+  _openCreateEditor() {
+    this._editorMode = 'create';
+    this._editorDocId = '';
+    this._editorFields = [{ key: '', type: 'string', value: '' }];
+    this._editorOpen = true;
+  }
+
+  _openEditEditor() {
+    if (!this._selectedDoc) return;
+    this._editorMode = 'edit';
+    this._editorDocId = this._selectedDoc.id;
+    this._editorFields = Object.entries(this._selectedDoc.data ?? {}).map(([key, value]) => ({
+      key,
+      type: this._getTypeLabel(value),
+      value: this._formatValue(value),
+    }));
+    this._editorOpen = true;
+  }
+
+  _onEditorClose() {
+    this._editorOpen = false;
+  }
+
+  async _onEditorSave(e) {
+    const { mode, documentId, data } = e.detail;
+    this._editorOpen = false;
+    this._loading = true;
+    this._error = '';
+
+    try {
+      if (mode === 'create') {
+        const collectionPath = this._breadcrumbs.findLast((b) => b.type === 'collection')?.path;
+        await firestoreApi.createDocument(this.firestoreId, collectionPath, data, documentId);
+        this._successMessage = 'Documento creado correctamente.';
+        // Refresh documents list
+        const result = await firestoreApi.listDocuments(this.firestoreId, collectionPath);
+        this._documents = result.documents;
+        this._hasMore = result.hasMore;
+      } else {
+        await firestoreApi.updateDocument(this.firestoreId, this._selectedDoc.path, data);
+        this._successMessage = 'Documento actualizado correctamente.';
+        // Refresh document detail
+        this._selectedDoc = await firestoreApi.getDocument(this.firestoreId, this._selectedDoc.path);
+      }
+      setTimeout(() => (this._successMessage = ''), 3000);
+    } catch (err) {
+      this._error = err.message ?? 'Error al guardar documento.';
+    } finally {
+      this._loading = false;
+    }
+  }
+
+  _showDeleteConfirm() {
+    this._confirmDelete = true;
+  }
+
+  _cancelDelete() {
+    this._confirmDelete = false;
+  }
+
+  async _deleteDocument() {
+    this._confirmDelete = false;
+    this._loading = true;
+    this._error = '';
+
+    try {
+      await firestoreApi.deleteDocument(this.firestoreId, this._selectedDoc.path);
+      this._successMessage = 'Documento eliminado correctamente.';
+      setTimeout(() => (this._successMessage = ''), 3000);
+
+      // Go back to documents list
+      this._breadcrumbs = this._breadcrumbs.filter((b) => b.path !== this._selectedDoc.path);
+      this._selectedDoc = null;
+      this._view = 'documents';
+
+      const collectionPath = this._breadcrumbs.findLast((b) => b.type === 'collection')?.path;
+      if (collectionPath) {
+        const result = await firestoreApi.listDocuments(this.firestoreId, collectionPath);
+        this._documents = result.documents;
+        this._hasMore = result.hasMore;
+      }
+    } catch (err) {
+      this._error = err.message ?? 'Error al eliminar documento.';
+    } finally {
+      this._loading = false;
+    }
+  }
+
   _formatValue(value) {
     if (value === null || value === undefined) return 'null';
     if (typeof value === 'object' && value._type === 'timestamp') return value.value;
@@ -441,19 +615,20 @@ export class FmaPageFirestore extends LitElement {
   }
 
   _renderDocuments() {
-    if (this._documents.length === 0 && !this._loading) {
-      return html`<div class="empty">No hay documentos en esta colección.</div>`;
-    }
-
     return html`
-      ${this._documents.map(
-        (doc) => html`
-          <div class="list-item" @click=${() => this._selectDocument(doc)}>
-            <span class="icon">📄</span>
-            <span class="name">${doc.id}</span>
-          </div>
-        `,
-      )}
+      <div class="toolbar">
+        <button class="btn btn-primary" @click=${this._openCreateEditor}>+ Nuevo documento</button>
+      </div>
+      ${this._documents.length === 0 && !this._loading
+        ? html`<div class="empty">No hay documentos en esta colección.</div>`
+        : this._documents.map(
+            (doc) => html`
+              <div class="list-item" @click=${() => this._selectDocument(doc)}>
+                <span class="icon">📄</span>
+                <span class="name">${doc.id}</span>
+              </div>
+            `,
+          )}
       ${this._hasMore && !this._loading
         ? html`<button class="load-more" @click=${this._loadMore}>Cargar más documentos</button>`
         : ''}
@@ -496,7 +671,22 @@ export class FmaPageFirestore extends LitElement {
               </div>
             `
           : ''}
+        <div class="doc-actions">
+          <button class="btn btn-primary" @click=${this._openEditEditor}>Editar</button>
+          <button class="btn btn-danger" @click=${this._showDeleteConfirm}>Eliminar</button>
+        </div>
       </div>
+      ${this._confirmDelete
+        ? html`
+            <div class="confirm-delete">
+              <p>¿Eliminar el documento "${this._selectedDoc.id}" permanentemente?</p>
+              <div class="confirm-actions">
+                <button class="btn btn-danger" @click=${this._deleteDocument}>Eliminar</button>
+                <button class="btn" @click=${this._cancelDelete}>Cancelar</button>
+              </div>
+            </div>
+          `
+        : ''}
     `;
   }
 
@@ -507,11 +697,21 @@ export class FmaPageFirestore extends LitElement {
       </div>
 
       ${this._renderBreadcrumbs()}
+      ${this._successMessage ? html`<div class="success" role="status">${this._successMessage}</div>` : ''}
       ${this._error ? html`<div class="error" role="alert">${this._error}</div>` : ''}
       ${this._loading ? html`<div class="loading">Cargando...</div>` : ''}
       ${this._view === 'collections' && !this._loading ? this._renderCollections() : ''}
       ${this._view === 'documents' && !this._loading ? this._renderDocuments() : ''}
       ${this._view === 'document' && !this._loading ? this._renderDocument() : ''}
+
+      <fma-document-editor
+        ?open=${this._editorOpen}
+        .mode=${this._editorMode}
+        .documentId=${this._editorDocId}
+        .fields=${this._editorFields}
+        @editor-close=${this._onEditorClose}
+        @editor-save=${this._onEditorSave}
+      ></fma-document-editor>
     `;
   }
 }
