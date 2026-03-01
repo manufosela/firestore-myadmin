@@ -1,20 +1,28 @@
 import { html, fixture, expect } from '@open-wc/testing';
 import { authService } from '../src/services/auth-service.js';
+import { userAccessApi } from '../src/services/user-access-api.js';
 import { Router } from '@vaadin/router';
 import '../src/pages/page-login.js';
 
 describe('FmaPageLogin', () => {
   let originalLoginWithGoogle;
   let originalRouterGo;
+  let originalCheckUserAccess;
+  let originalLogout;
 
   beforeEach(() => {
     originalLoginWithGoogle = authService.loginWithGoogle;
     originalRouterGo = Router.go;
+    originalCheckUserAccess = userAccessApi.checkUserAccess;
+    originalLogout = authService.logout;
+    userAccessApi._reset();
   });
 
   afterEach(() => {
     authService.loginWithGoogle = originalLoginWithGoogle;
     Router.go = originalRouterGo;
+    userAccessApi.checkUserAccess = originalCheckUserAccess;
+    authService.logout = originalLogout;
   });
 
   describe('rendering', () => {
@@ -114,6 +122,68 @@ describe('FmaPageLogin', () => {
       expect(btn.textContent.trim()).to.include('Iniciando sesión');
       const spinner = el.shadowRoot.querySelector('.spinner');
       expect(spinner).to.exist;
+    });
+  });
+
+  describe('pending approval flow', () => {
+    it('shows pending screen when user is not approved', async () => {
+      authService.loginWithGoogle = () => Promise.resolve({ uid: 'new-uid', email: 'new@test.com' });
+      userAccessApi.checkUserAccess = () =>
+        Promise.resolve({ status: 'pending', role: 'user', email: 'new@test.com' });
+
+      const el = await fixture(html`<fma-page-login></fma-page-login>`);
+      const btn = el.shadowRoot.querySelector('.google-btn');
+      btn.click();
+
+      await new Promise((r) => setTimeout(r, 10));
+      await el.updateComplete;
+
+      const pendingCard = el.shadowRoot.querySelector('.pending-card');
+      expect(pendingCard).to.exist;
+      expect(pendingCard.textContent).to.include('pendiente de aprobación');
+      expect(pendingCard.textContent).to.include('new@test.com');
+    });
+
+    it('shows back button on pending screen', async () => {
+      authService.loginWithGoogle = () => Promise.resolve({ uid: 'new-uid', email: 'new@test.com' });
+      userAccessApi.checkUserAccess = () =>
+        Promise.resolve({ status: 'pending', role: 'user', email: 'new@test.com' });
+
+      const el = await fixture(html`<fma-page-login></fma-page-login>`);
+      const btn = el.shadowRoot.querySelector('.google-btn');
+      btn.click();
+
+      await new Promise((r) => setTimeout(r, 10));
+      await el.updateComplete;
+
+      const backBtn = el.shadowRoot.querySelector('.btn-back');
+      expect(backBtn).to.exist;
+      expect(backBtn.textContent).to.include('Volver al inicio');
+    });
+
+    it('returns to login view when back button is clicked', async () => {
+      authService.loginWithGoogle = () => Promise.resolve({ uid: 'new-uid', email: 'new@test.com' });
+      authService.logout = () => Promise.resolve();
+      userAccessApi.checkUserAccess = () =>
+        Promise.resolve({ status: 'pending', role: 'user', email: 'new@test.com' });
+
+      const el = await fixture(html`<fma-page-login></fma-page-login>`);
+      const btn = el.shadowRoot.querySelector('.google-btn');
+      btn.click();
+
+      await new Promise((r) => setTimeout(r, 10));
+      await el.updateComplete;
+
+      const backBtn = el.shadowRoot.querySelector('.btn-back');
+      backBtn.click();
+
+      await new Promise((r) => setTimeout(r, 10));
+      await el.updateComplete;
+
+      const loginCard = el.shadowRoot.querySelector('.login-card');
+      expect(loginCard).to.exist;
+      const pendingCard = el.shadowRoot.querySelector('.pending-card');
+      expect(pendingCard).to.not.exist;
     });
   });
 });
