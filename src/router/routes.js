@@ -2,13 +2,13 @@ import { authGuard } from './guards.js';
 
 export const routes = [
   {
-    path: '/login',
+    path: '/',
     component: 'fma-page-login',
     action: () => import('../pages/page-login.js'),
   },
   {
-    path: '/',
-    redirect: '/dashboard',
+    path: '/login',
+    redirect: '/',
   },
   {
     path: '/dashboard',

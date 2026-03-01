@@ -122,6 +122,13 @@ export class FmaPageLogin extends LitElement {
     this._loading = false;
   }
 
+  onBeforeEnter(_location, commands) {
+    if (authService.isAuthenticated) {
+      return commands.redirect('/dashboard');
+    }
+    return undefined;
+  }
+
   async _loginWithGoogle() {
     this._loading = true;
     this._error = '';
