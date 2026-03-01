@@ -1,0 +1,23 @@
+{
+  "name": "firestore-myadmin-functions",
+  "description": "Cloud Functions for Firestore MyAdmin",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "vitest run",
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^13.4.0",
+    "firebase-functions": "^6.6.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.1.4"
+  },
+  "private": true
+}
