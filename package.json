@@ -1,0 +1,25 @@
+{
+  "name": "firestore-myadmin",
+  "version": "0.1.0",
+  "description": "Gestor genérico, configurable y transversal para múltiples bases de datos Firestore, al estilo PHPMyAdmin",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "web-test-runner",
+    "lint": "eslint src/",
+    "format": "prettier --write src/"
+  },
+  "keywords": [
+    "firestore",
+    "admin",
+    "lit",
+    "web-components",
+    "firebase"
+  ],
+  "author": "Mánu Fosela",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}
