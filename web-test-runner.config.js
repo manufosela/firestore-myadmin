@@ -26,6 +26,9 @@ function mockPlugin() {
       if (context.path === '/src/services/connection-service.js') {
         return fs.readFileSync(path.join(__dirname, 'test/mocks/connection-service.js'), 'utf-8');
       }
+      if (context.path === '/src/services/firestore-api.js') {
+        return fs.readFileSync(path.join(__dirname, 'test/mocks/firestore-api.js'), 'utf-8');
+      }
     },
   };
 }
