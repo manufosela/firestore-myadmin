@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { initRouter } from '../router/index.js';
 import { authService } from '../services/auth-service.js';
 import { connectionService } from '../services/connection-service.js';
+import { resetAccessCache } from '../router/guards.js';
 import { Router } from '@vaadin/router';
 
 export class FmaApp extends LitElement {
@@ -280,6 +281,7 @@ export class FmaApp extends LitElement {
   }
 
   async _logout() {
+    resetAccessCache();
     await authService.logout();
     Router.go('/');
   }
