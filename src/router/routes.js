@@ -14,7 +14,7 @@ export const routes = [
     path: '/dashboard',
     component: 'fma-page-dashboard',
     action: async (context, commands) => {
-      const result = authGuard(context, commands);
+      const result = await authGuard(context, commands);
       if (result) return result;
       await import('../pages/page-dashboard.js');
       return undefined;
@@ -24,7 +24,7 @@ export const routes = [
     path: '/firestore/:id',
     component: 'fma-page-firestore',
     action: async (context, commands) => {
-      const result = authGuard(context, commands);
+      const result = await authGuard(context, commands);
       if (result) return result;
       await import('../pages/page-firestore.js');
       return undefined;
@@ -34,7 +34,7 @@ export const routes = [
     path: '/admin',
     component: 'fma-page-admin',
     action: async (context, commands) => {
-      const result = authGuard(context, commands);
+      const result = await authGuard(context, commands);
       if (result) return result;
       await import('../pages/page-admin.js');
       return undefined;
