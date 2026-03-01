@@ -21,6 +21,7 @@
   "author": "Mánu Fosela",
   "license": "MIT",
   "dependencies": {
+    "firebase": "^12.10.0",
     "lit": "^3.3.2"
   },
   "devDependencies": {
