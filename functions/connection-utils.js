@@ -4,10 +4,30 @@ import { decrypt } from './kms-service.js';
 import { getRemoteFirestore } from './remote-app.js';
 
 /**
+ * Get the user's role for a connection.
+ * @param {string} connectionId
+ * @param {string} uid
+ * @returns {Promise<string|null>} Role: 'admin' | 'editor' | 'viewer' | null
+ */
+export async function getUserRole(connectionId, uid) {
+  const db = getFirestore();
+  const permDoc = await db.collection('permissions').doc(`${connectionId}_${uid}`).get();
+  if (permDoc.exists) {
+    return permDoc.data().role;
+  }
+  // Fallback: check if user is the creator (legacy connections without permissions)
+  const connDoc = await db.collection('connections').doc(connectionId).get();
+  if (connDoc.exists && connDoc.data().createdBy === uid) {
+    return 'admin';
+  }
+  return null;
+}
+
+/**
  * Get the connection document and verify the user has access.
  * @param {string} connectionId
  * @param {string} uid - Authenticated user's UID
- * @returns {Promise<object>} Connection data
+ * @returns {Promise<object>} Connection data with role
  */
 export async function getConnection(connectionId, uid) {
   const db = getFirestore();
@@ -18,12 +38,30 @@ export async function getConnection(connectionId, uid) {
   }
 
   const connection = doc.data();
+  const role = await getUserRole(connectionId, uid);
 
-  if (connection.createdBy !== uid) {
+  if (!role) {
     throw new HttpsError('permission-denied', 'No tienes acceso a esta conexión.');
   }
 
+  connection._role = role;
   return connection;
+}
+
+/**
+ * Check that the user has at least the required role.
+ * Role hierarchy: admin > editor > viewer
+ * @param {object} connection - Connection data with _role
+ * @param {string} requiredRole - 'viewer' | 'editor' | 'admin'
+ */
+export function requireRole(connection, requiredRole) {
+  const hierarchy = { viewer: 1, editor: 2, admin: 3 };
+  const userLevel = hierarchy[connection._role] ?? 0;
+  const requiredLevel = hierarchy[requiredRole] ?? 0;
+
+  if (userLevel < requiredLevel) {
+    throw new HttpsError('permission-denied', `Se requiere rol "${requiredRole}" para esta operación.`);
+  }
 }
 
 /**

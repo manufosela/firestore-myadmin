@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { connectionService } from '../services/connection-service.js';
 import { firestoreApi } from '../services/firestore-api.js';
+import { permissionsApi } from '../services/permissions-api.js';
 import '../components/document-editor.js';
 
 export class FmaPageFirestore extends LitElement {
@@ -21,6 +22,7 @@ export class FmaPageFirestore extends LitElement {
     _editorDocId: { type: String, state: true },
     _confirmDelete: { type: Boolean, state: true },
     _successMessage: { type: String, state: true },
+    _userRole: { type: String, state: true },
   };
 
   static styles = css`
@@ -307,6 +309,11 @@ export class FmaPageFirestore extends LitElement {
     this._editorDocId = '';
     this._confirmDelete = false;
     this._successMessage = '';
+    this._userRole = null;
+  }
+
+  get _canEdit() {
+    return this._userRole === 'admin' || this._userRole === 'editor';
   }
 
   onBeforeEnter(location) {
@@ -316,6 +323,16 @@ export class FmaPageFirestore extends LitElement {
     this._connectionName = conn?.name ?? '';
     this._breadcrumbs = [];
     this._loadCollections();
+    this._loadUserRole();
+  }
+
+  async _loadUserRole() {
+    try {
+      this._userRole = await permissionsApi.getMyRole(this.firestoreId);
+    } catch {
+      // Fallback: assume viewer if role check fails
+      this._userRole = 'viewer';
+    }
   }
 
   async _loadCollections(parentPath = null) {
@@ -616,9 +633,13 @@ export class FmaPageFirestore extends LitElement {
 
   _renderDocuments() {
     return html`
-      <div class="toolbar">
-        <button class="btn btn-primary" @click=${this._openCreateEditor}>+ Nuevo documento</button>
-      </div>
+      ${this._canEdit
+        ? html`
+            <div class="toolbar">
+              <button class="btn btn-primary" @click=${this._openCreateEditor}>+ Nuevo documento</button>
+            </div>
+          `
+        : ''}
       ${this._documents.length === 0 && !this._loading
         ? html`<div class="empty">No hay documentos en esta colección.</div>`
         : this._documents.map(
@@ -671,10 +692,14 @@ export class FmaPageFirestore extends LitElement {
               </div>
             `
           : ''}
-        <div class="doc-actions">
-          <button class="btn btn-primary" @click=${this._openEditEditor}>Editar</button>
-          <button class="btn btn-danger" @click=${this._showDeleteConfirm}>Eliminar</button>
-        </div>
+        ${this._canEdit
+          ? html`
+              <div class="doc-actions">
+                <button class="btn btn-primary" @click=${this._openEditEditor}>Editar</button>
+                <button class="btn btn-danger" @click=${this._showDeleteConfirm}>Eliminar</button>
+              </div>
+            `
+          : ''}
       </div>
       ${this._confirmDelete
         ? html`

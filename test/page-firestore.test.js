@@ -1,5 +1,6 @@
 import { html, fixture, expect } from '@open-wc/testing';
 import { firestoreApi } from '../src/services/firestore-api.js';
+import { permissionsApi } from '../src/services/permissions-api.js';
 import { connectionService } from '../src/services/connection-service.js';
 import '../src/pages/page-firestore.js';
 
@@ -27,11 +28,13 @@ describe('FmaPageFirestore', () => {
   let originalListCollections;
   let originalListDocuments;
   let originalGetDocument;
+  let originalGetMyRole;
 
   beforeEach(() => {
     originalListCollections = firestoreApi.listCollections;
     originalListDocuments = firestoreApi.listDocuments;
     originalGetDocument = firestoreApi.getDocument;
+    originalGetMyRole = permissionsApi.getMyRole;
     connectionService._reset();
     connectionService._setConnections([{ id: 'conn-1', name: 'Production', projectId: 'prod' }]);
   });
@@ -40,6 +43,7 @@ describe('FmaPageFirestore', () => {
     firestoreApi.listCollections = originalListCollections;
     firestoreApi.listDocuments = originalListDocuments;
     firestoreApi.getDocument = originalGetDocument;
+    permissionsApi.getMyRole = originalGetMyRole;
     connectionService._reset();
   });
 
@@ -276,6 +280,7 @@ describe('FmaPageFirestore', () => {
 
       const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
       el.firestoreId = 'conn-1';
+      el._userRole = 'admin';
       el._view = 'collections';
       el._loading = false;
       await el.updateComplete;
@@ -294,6 +299,7 @@ describe('FmaPageFirestore', () => {
 
       const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
       el.firestoreId = 'conn-1';
+      el._userRole = 'admin';
       el._view = 'collections';
       el._loading = false;
       await el.updateComplete;
@@ -427,6 +433,84 @@ describe('FmaPageFirestore', () => {
 
       expect(el._view).to.equal('documents');
       expect(el._selectedDoc).to.be.null;
+    });
+  });
+
+  describe('role-based permissions', () => {
+    it('hides "Nuevo documento" button for viewers', async () => {
+      firestoreApi.listDocuments = async () => mockDocuments;
+
+      const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
+      el.firestoreId = 'conn-1';
+      el._userRole = 'viewer';
+      el._view = 'collections';
+      el._loading = false;
+      await el.updateComplete;
+
+      await el._selectCollection(mockCollections[0]);
+      await el.updateComplete;
+
+      const toolbar = el.shadowRoot.querySelector('.toolbar');
+      expect(toolbar).to.not.exist;
+    });
+
+    it('shows "Nuevo documento" button for editors', async () => {
+      firestoreApi.listDocuments = async () => mockDocuments;
+
+      const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
+      el.firestoreId = 'conn-1';
+      el._userRole = 'editor';
+      el._view = 'collections';
+      el._loading = false;
+      await el.updateComplete;
+
+      await el._selectCollection(mockCollections[0]);
+      await el.updateComplete;
+
+      const toolbar = el.shadowRoot.querySelector('.toolbar');
+      expect(toolbar).to.exist;
+    });
+
+    it('hides Edit/Delete buttons for viewers in document detail', async () => {
+      firestoreApi.listDocuments = async () => mockDocuments;
+      firestoreApi.getDocument = async () => mockDocument;
+
+      const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
+      el.firestoreId = 'conn-1';
+      el._userRole = 'viewer';
+      el._view = 'collections';
+      el._loading = false;
+      await el.updateComplete;
+
+      await el._selectCollection(mockCollections[0]);
+      await el.updateComplete;
+
+      await el._selectDocument(mockDocuments.documents[0]);
+      await el.updateComplete;
+
+      const docActions = el.shadowRoot.querySelector('.doc-actions');
+      expect(docActions).to.not.exist;
+    });
+
+    it('shows Edit/Delete buttons for admins in document detail', async () => {
+      firestoreApi.listDocuments = async () => mockDocuments;
+      firestoreApi.getDocument = async () => mockDocument;
+
+      const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
+      el.firestoreId = 'conn-1';
+      el._userRole = 'admin';
+      el._view = 'collections';
+      el._loading = false;
+      await el.updateComplete;
+
+      await el._selectCollection(mockCollections[0]);
+      await el.updateComplete;
+
+      await el._selectDocument(mockDocuments.documents[0]);
+      await el.updateComplete;
+
+      const docActions = el.shadowRoot.querySelector('.doc-actions');
+      expect(docActions).to.exist;
     });
   });
 });
