@@ -1,5 +1,7 @@
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth } from './firebase.js';
+
+const googleProvider = new GoogleAuthProvider();
 
 class AuthService {
   #user = null;
@@ -34,9 +36,9 @@ class AuthService {
     return this.#initPromise;
   }
 
-  async login(email, password) {
-    const credential = await signInWithEmailAndPassword(auth, email, password);
-    return credential.user;
+  async loginWithGoogle() {
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
   }
 
   async logout() {
