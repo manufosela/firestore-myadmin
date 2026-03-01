@@ -1,58 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { getFirestore } from 'firebase-admin/firestore';
-import { decrypt } from './kms-service.js';
-import { getRemoteFirestore } from './remote-app.js';
-
-/**
- * Get the connection document and verify the user has access.
- * @param {string} connectionId
- * @param {string} uid - Authenticated user's UID
- * @returns {Promise<object>} Connection data
- */
-async function getConnection(connectionId, uid) {
-  const db = getFirestore();
-  const doc = await db.collection('connections').doc(connectionId).get();
-
-  if (!doc.exists) {
-    throw new HttpsError('not-found', 'Conexión no encontrada.');
-  }
-
-  const connection = doc.data();
-
-  if (connection.createdBy !== uid) {
-    throw new HttpsError('permission-denied', 'No tienes acceso a esta conexión.');
-  }
-
-  return connection;
-}
-
-/**
- * Initialize a remote Firestore instance from encrypted credentials.
- * @param {string} connectionId
- * @param {object} connection - Connection document data
- * @returns {Promise<import('firebase-admin/firestore').Firestore>}
- */
-async function getRemoteDb(connectionId, connection) {
-  let credentials;
-  try {
-    const decrypted = await decrypt(connection.encryptedCredentials);
-    credentials = JSON.parse(decrypted);
-  } catch {
-    throw new HttpsError(
-      'internal',
-      'Error al desencriptar las credenciales. La conexión puede estar corrupta.',
-    );
-  }
-
-  try {
-    return getRemoteFirestore(connectionId, credentials);
-  } catch {
-    throw new HttpsError(
-      'internal',
-      'Error al conectar con el Firestore remoto. Verifica las credenciales.',
-    );
-  }
-}
+import { getConnection, getRemoteDb, requireAuth, requireParam } from './connection-utils.js';
 
 /**
  * Serialize Firestore field values to JSON-safe types.
@@ -77,14 +24,10 @@ function serializeValue(value) {
  * List top-level collections of a remote Firestore.
  */
 export const listCollections = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
-  }
+  requireAuth(request);
 
   const { connectionId } = request.data;
-  if (!connectionId) {
-    throw new HttpsError('invalid-argument', 'connectionId es obligatorio.');
-  }
+  requireParam(connectionId, 'connectionId');
 
   const connection = await getConnection(connectionId, request.auth.uid);
   const remoteDb = await getRemoteDb(connectionId, connection);
@@ -102,18 +45,11 @@ export const listCollections = onCall(async (request) => {
  * List documents in a collection of a remote Firestore.
  */
 export const listDocuments = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
-  }
+  requireAuth(request);
 
   const { connectionId, collectionPath, limit = 25, startAfter } = request.data;
-
-  if (!connectionId) {
-    throw new HttpsError('invalid-argument', 'connectionId es obligatorio.');
-  }
-  if (!collectionPath) {
-    throw new HttpsError('invalid-argument', 'collectionPath es obligatorio.');
-  }
+  requireParam(connectionId, 'connectionId');
+  requireParam(collectionPath, 'collectionPath');
 
   const connection = await getConnection(connectionId, request.auth.uid);
   const remoteDb = await getRemoteDb(connectionId, connection);
@@ -143,18 +79,11 @@ export const listDocuments = onCall(async (request) => {
  * Get a single document from a remote Firestore.
  */
 export const getDocument = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Debes iniciar sesión.');
-  }
+  requireAuth(request);
 
   const { connectionId, documentPath } = request.data;
-
-  if (!connectionId) {
-    throw new HttpsError('invalid-argument', 'connectionId es obligatorio.');
-  }
-  if (!documentPath) {
-    throw new HttpsError('invalid-argument', 'documentPath es obligatorio.');
-  }
+  requireParam(connectionId, 'connectionId');
+  requireParam(documentPath, 'documentPath');
 
   const connection = await getConnection(connectionId, request.auth.uid);
   const remoteDb = await getRemoteDb(connectionId, connection);
