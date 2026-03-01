@@ -1,5 +1,7 @@
 # Firestore MyAdmin
 
+[![CI](https://github.com/manufosela/firestore-myadmin/actions/workflows/ci.yml/badge.svg)](https://github.com/manufosela/firestore-myadmin/actions/workflows/ci.yml)
+
 Gestor genérico, configurable y transversal para múltiples bases de datos Firestore, al estilo PHPMyAdmin.
 
 ## Descripción
