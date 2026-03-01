@@ -13,7 +13,7 @@ export async function authGuard(context, commands) {
   }
 
   if (!authService.isAuthenticated) {
-    return commands.redirect('/login');
+    return commands.redirect('/');
   }
 
   return undefined;

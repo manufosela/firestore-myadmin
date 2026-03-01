@@ -281,7 +281,7 @@ export class FmaApp extends LitElement {
 
   async _logout() {
     await authService.logout();
-    Router.go('/login');
+    Router.go('/');
   }
 
   render() {
