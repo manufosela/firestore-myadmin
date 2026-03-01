@@ -20,7 +20,7 @@ class MockAuthService {
     return Promise.resolve(this.#user);
   }
 
-  async login() {
+  async loginWithGoogle() {
     return { uid: 'mock-uid', email: 'mock@test.com' };
   }
 
