@@ -61,14 +61,26 @@ export const storeCredentials = onCall(async (request) => {
   const db = getFirestore();
   const connectionRef = db.collection('connections').doc();
 
+  const now = new Date().toISOString();
+
   await connectionRef.set({
     name: connectionName.trim(),
     projectId: serviceAccountKey.project_id,
     clientEmail: serviceAccountKey.client_email,
     encryptedCredentials,
     createdBy: request.auth.uid,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  // Auto-assign admin role to the creator
+  const permId = `${connectionRef.id}_${request.auth.uid}`;
+  await db.collection('permissions').doc(permId).set({
+    connectionId: connectionRef.id,
+    userId: request.auth.uid,
+    role: 'admin',
+    updatedAt: now,
+    updatedBy: request.auth.uid,
   });
 
   return {
