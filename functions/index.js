@@ -8,3 +8,4 @@ export const helloWorld = onRequest((req, res) => {
 });
 
 export { storeCredentials } from './store-credentials.js';
+export { listCollections, listDocuments, getDocument } from './firestore-proxy.js';
