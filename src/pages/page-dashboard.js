@@ -1,4 +1,6 @@
 import { LitElement, html, css } from 'lit';
+import { Router } from '@vaadin/router';
+import { connectionService } from '../services/connection-service.js';
 import '../components/connection-dialog.js';
 import '../components/connection-list.js';
 
@@ -75,8 +77,8 @@ export class FmaPageDashboard extends LitElement {
 
   _onConnectionSelect(e) {
     const conn = e.detail;
-    window.history.pushState({}, '', `/firestore/${conn.id}`);
-    window.dispatchEvent(new PopStateEvent('popstate'));
+    connectionService.setActive(conn.id);
+    Router.go(`/firestore/${conn.id}`);
   }
 
   render() {
