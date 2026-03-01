@@ -269,4 +269,164 @@ describe('FmaPageFirestore', () => {
       expect(el._view).to.equal('collections');
     });
   });
+
+  describe('CRUD operations', () => {
+    it('shows "Nuevo documento" button in documents view', async () => {
+      firestoreApi.listDocuments = async () => mockDocuments;
+
+      const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
+      el.firestoreId = 'conn-1';
+      el._view = 'collections';
+      el._loading = false;
+      await el.updateComplete;
+
+      await el._selectCollection(mockCollections[0]);
+      await el.updateComplete;
+
+      const newBtn = el.shadowRoot.querySelector('.btn-primary');
+      expect(newBtn).to.exist;
+      expect(newBtn.textContent).to.include('Nuevo documento');
+    });
+
+    it('shows Edit and Delete buttons in document detail', async () => {
+      firestoreApi.listDocuments = async () => mockDocuments;
+      firestoreApi.getDocument = async () => mockDocument;
+
+      const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
+      el.firestoreId = 'conn-1';
+      el._view = 'collections';
+      el._loading = false;
+      await el.updateComplete;
+
+      await el._selectCollection(mockCollections[0]);
+      await el.updateComplete;
+
+      await el._selectDocument(mockDocuments.documents[0]);
+      await el.updateComplete;
+
+      const docActions = el.shadowRoot.querySelector('.doc-actions');
+      expect(docActions).to.exist;
+      const buttons = docActions.querySelectorAll('.btn');
+      const texts = Array.from(buttons).map((b) => b.textContent.trim());
+      expect(texts).to.include('Editar');
+      expect(texts).to.include('Eliminar');
+    });
+
+    it('opens editor on "Nuevo documento" click', async () => {
+      firestoreApi.listDocuments = async () => mockDocuments;
+
+      const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
+      el.firestoreId = 'conn-1';
+      el._view = 'collections';
+      el._loading = false;
+      await el.updateComplete;
+
+      await el._selectCollection(mockCollections[0]);
+      await el.updateComplete;
+
+      el._openCreateEditor();
+      await el.updateComplete;
+
+      expect(el._editorOpen).to.be.true;
+      expect(el._editorMode).to.equal('create');
+    });
+
+    it('opens editor on Edit click', async () => {
+      firestoreApi.listDocuments = async () => mockDocuments;
+      firestoreApi.getDocument = async () => mockDocument;
+
+      const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
+      el.firestoreId = 'conn-1';
+      el._view = 'collections';
+      el._loading = false;
+      await el.updateComplete;
+
+      await el._selectCollection(mockCollections[0]);
+      await el.updateComplete;
+
+      await el._selectDocument(mockDocuments.documents[0]);
+      await el.updateComplete;
+
+      el._openEditEditor();
+      await el.updateComplete;
+
+      expect(el._editorOpen).to.be.true;
+      expect(el._editorMode).to.equal('edit');
+      expect(el._editorFields.length).to.equal(3);
+    });
+
+    it('shows delete confirmation on Eliminar click', async () => {
+      firestoreApi.listDocuments = async () => mockDocuments;
+      firestoreApi.getDocument = async () => mockDocument;
+
+      const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
+      el.firestoreId = 'conn-1';
+      el._view = 'collections';
+      el._loading = false;
+      await el.updateComplete;
+
+      await el._selectCollection(mockCollections[0]);
+      await el.updateComplete;
+
+      await el._selectDocument(mockDocuments.documents[0]);
+      await el.updateComplete;
+
+      el._showDeleteConfirm();
+      await el.updateComplete;
+
+      const confirm = el.shadowRoot.querySelector('.confirm-delete');
+      expect(confirm).to.exist;
+      expect(confirm.textContent).to.include('Eliminar');
+    });
+
+    it('cancels delete confirmation', async () => {
+      firestoreApi.listDocuments = async () => mockDocuments;
+      firestoreApi.getDocument = async () => mockDocument;
+
+      const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
+      el.firestoreId = 'conn-1';
+      el._view = 'collections';
+      el._loading = false;
+      await el.updateComplete;
+
+      await el._selectCollection(mockCollections[0]);
+      await el.updateComplete;
+
+      await el._selectDocument(mockDocuments.documents[0]);
+      await el.updateComplete;
+
+      el._showDeleteConfirm();
+      await el.updateComplete;
+
+      el._cancelDelete();
+      await el.updateComplete;
+
+      const confirm = el.shadowRoot.querySelector('.confirm-delete');
+      expect(confirm).to.not.exist;
+    });
+
+    it('deletes document and returns to documents view', async () => {
+      firestoreApi.listDocuments = async () => mockDocuments;
+      firestoreApi.getDocument = async () => mockDocument;
+      firestoreApi.deleteDocument = async () => ({ message: 'ok' });
+
+      const el = await fixture(html`<fma-page-firestore></fma-page-firestore>`);
+      el.firestoreId = 'conn-1';
+      el._view = 'collections';
+      el._loading = false;
+      await el.updateComplete;
+
+      await el._selectCollection(mockCollections[0]);
+      await el.updateComplete;
+
+      await el._selectDocument(mockDocuments.documents[0]);
+      await el.updateComplete;
+
+      await el._deleteDocument();
+      await el.updateComplete;
+
+      expect(el._view).to.equal('documents');
+      expect(el._selectedDoc).to.be.null;
+    });
+  });
 });
