@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { initRouter } from '../router/index.js';
 import { authService } from '../services/auth-service.js';
+import { connectionService } from '../services/connection-service.js';
 import { Router } from '@vaadin/router';
 
 export class FmaApp extends LitElement {
@@ -8,6 +9,8 @@ export class FmaApp extends LitElement {
     sidebarOpen: { type: Boolean, state: true },
     _authenticated: { type: Boolean, state: true },
     _userEmail: { type: String, state: true },
+    _connections: { type: Array, state: true },
+    _activeConnectionId: { type: String, state: true },
   };
 
   static styles = css`
@@ -136,6 +139,26 @@ export class FmaApp extends LitElement {
       letter-spacing: 0.05em;
     }
 
+    .sidebar a.active {
+      background: rgba(26, 115, 232, 0.1);
+      color: var(--fma-primary, #1a73e8);
+      font-weight: 600;
+    }
+
+    .sidebar .conn-project {
+      font-size: 0.7rem;
+      opacity: 0.7;
+      display: block;
+      margin-top: 1px;
+    }
+
+    .sidebar .no-connections {
+      padding: var(--fma-space-xs, 0.25rem) var(--fma-space-lg, 1.5rem);
+      font-size: var(--fma-font-size-sm, 0.875rem);
+      color: var(--fma-text-secondary, #5f6368);
+      font-style: italic;
+    }
+
     /* Overlay for mobile */
     .overlay {
       display: none;
@@ -192,22 +215,33 @@ export class FmaApp extends LitElement {
     this.sidebarOpen = true;
     this._authenticated = false;
     this._userEmail = '';
-    this._unsubscribe = null;
+    this._connections = [];
+    this._activeConnectionId = null;
+    this._unsubscribeAuth = null;
+    this._unsubscribeConnections = null;
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this._unsubscribe = authService.subscribe((user) => {
+    this._unsubscribeAuth = authService.subscribe((user) => {
       this._authenticated = user !== null;
       this._userEmail = user?.email ?? '';
+    });
+    this._unsubscribeConnections = connectionService.subscribe(({ connections, activeConnectionId }) => {
+      this._connections = connections;
+      this._activeConnectionId = activeConnectionId;
     });
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this._unsubscribe) {
-      this._unsubscribe();
-      this._unsubscribe = null;
+    if (this._unsubscribeAuth) {
+      this._unsubscribeAuth();
+      this._unsubscribeAuth = null;
+    }
+    if (this._unsubscribeConnections) {
+      this._unsubscribeConnections();
+      this._unsubscribeConnections = null;
     }
   }
 
@@ -236,6 +270,13 @@ export class FmaApp extends LitElement {
     if (window.innerWidth <= 768) {
       this.sidebarOpen = false;
     }
+  }
+
+  _selectConnection(conn, e) {
+    e.preventDefault();
+    connectionService.setActive(conn.id);
+    Router.go(`/firestore/${conn.id}`);
+    this._closeSidebarOnMobile();
   }
 
   async _logout() {
@@ -271,8 +312,23 @@ export class FmaApp extends LitElement {
           <a href="/dashboard" @click=${this._closeSidebarOnMobile}>Dashboard</a>
           <a href="/admin" @click=${this._closeSidebarOnMobile}>Administración</a>
 
-          <div class="section-title">Firestores</div>
-          <a href="/firestore/default" @click=${this._closeSidebarOnMobile}>Default Project</a>
+          <div class="section-title">Conexiones</div>
+          ${this._connections.length > 0
+            ? this._connections.map(
+                (conn) => html`
+                  <a
+                    href="/firestore/${conn.id}"
+                    class="${this._activeConnectionId === conn.id ? 'active' : ''}"
+                    @click=${(e) => this._selectConnection(conn, e)}
+                  >
+                    <span>
+                      ${conn.name}
+                      <span class="conn-project">${conn.projectId}</span>
+                    </span>
+                  </a>
+                `,
+              )
+            : html`<div class="no-connections">Sin conexiones</div>`}
         </nav>
       </aside>
 
