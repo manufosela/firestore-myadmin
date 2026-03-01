@@ -8,7 +8,8 @@ export const routes = [
   },
   {
     path: '/login',
-    redirect: '/',
+    component: 'fma-page-login',
+    action: () => import('../pages/page-login.js'),
   },
   {
     path: '/dashboard',
