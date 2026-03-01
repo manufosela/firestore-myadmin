@@ -11,3 +11,4 @@ export { storeCredentials } from './store-credentials.js';
 export { listCollections, listDocuments, getDocument } from './firestore-proxy.js';
 export { createDocument, updateDocument, deleteDocument } from './firestore-crud.js';
 export { setUserRole, removeUserRole, getMyRole, listConnectionUsers } from './permissions.js';
+export { checkUserAccess, listAppUsers, approveUser, deleteAppUser } from './user-access.js';

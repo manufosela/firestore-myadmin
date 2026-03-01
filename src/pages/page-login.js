@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { authService } from '../services/auth-service.js';
+import { userAccessApi } from '../services/user-access-api.js';
 import { Router } from '@vaadin/router';
 
 const FIREBASE_ERROR_MESSAGES = {
@@ -14,6 +15,8 @@ export class FmaPageLogin extends LitElement {
   static properties = {
     _error: { type: String, state: true },
     _loading: { type: Boolean, state: true },
+    _pendingApproval: { type: Boolean, state: true },
+    _pendingEmail: { type: String, state: true },
   };
 
   static styles = css`
@@ -114,12 +117,68 @@ export class FmaPageLogin extends LitElement {
         transform: rotate(360deg);
       }
     }
+
+    .pending-card {
+      background: var(--fma-surface, #fff);
+      border-radius: var(--fma-radius-lg, 8px);
+      box-shadow: var(--fma-shadow-md, 0 2px 6px rgba(0, 0, 0, 0.15));
+      padding: var(--fma-space-xl, 2rem);
+      width: 100%;
+      max-width: 400px;
+      margin: var(--fma-space-md, 1rem);
+      text-align: center;
+    }
+
+    .pending-icon {
+      font-size: 3rem;
+      margin-bottom: var(--fma-space-md, 1rem);
+    }
+
+    .pending-card h2 {
+      color: var(--fma-text, #202124);
+      font-size: var(--fma-font-size-lg, 1.25rem);
+      margin: 0 0 var(--fma-space-sm, 0.5rem);
+    }
+
+    .pending-card p {
+      color: var(--fma-text-secondary, #5f6368);
+      font-size: var(--fma-font-size-sm, 0.875rem);
+      margin: 0 0 var(--fma-space-md, 1rem);
+      line-height: 1.5;
+    }
+
+    .pending-email {
+      font-weight: 600;
+      color: var(--fma-text, #202124);
+    }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--fma-space-xs, 0.25rem);
+      padding: 0.5rem 1rem;
+      background: none;
+      color: var(--fma-primary, #1a73e8);
+      border: 1px solid var(--fma-primary, #1a73e8);
+      border-radius: var(--fma-radius, 4px);
+      font-size: var(--fma-font-size-sm, 0.875rem);
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background var(--fma-transition, 200ms ease-in-out);
+    }
+
+    .btn-back:hover {
+      background: rgba(26, 115, 232, 0.08);
+    }
   `;
 
   constructor() {
     super();
     this._error = '';
     this._loading = false;
+    this._pendingApproval = false;
+    this._pendingEmail = '';
   }
 
   onBeforeEnter(_location, commands) {
@@ -135,7 +194,14 @@ export class FmaPageLogin extends LitElement {
 
     try {
       await authService.loginWithGoogle();
-      Router.go('/dashboard');
+      const access = await userAccessApi.checkUserAccess();
+
+      if (access.status === 'approved') {
+        Router.go('/dashboard');
+      } else {
+        this._pendingApproval = true;
+        this._pendingEmail = access.email;
+      }
     } catch (err) {
       const code = err.code;
       this._error = FIREBASE_ERROR_MESSAGES[code] ?? `Error de autenticación: ${code}`;
@@ -144,7 +210,28 @@ export class FmaPageLogin extends LitElement {
     }
   }
 
+  async _backToLogin() {
+    await authService.logout();
+    this._pendingApproval = false;
+    this._pendingEmail = '';
+    this._error = '';
+  }
+
   render() {
+    if (this._pendingApproval) {
+      return html`
+        <div class="pending-card">
+          <div class="pending-icon">&#9203;</div>
+          <h2>Registro pendiente de aprobación</h2>
+          <p>
+            Tu cuenta <span class="pending-email">${this._pendingEmail}</span> ha sido registrada
+            correctamente. Un administrador debe aprobar tu acceso antes de poder usar la aplicación.
+          </p>
+          <button class="btn-back" @click=${this._backToLogin}>Volver al inicio</button>
+        </div>
+      `;
+    }
+
     return html`
       <div class="login-card">
         <h1>Firestore MyAdmin</h1>
