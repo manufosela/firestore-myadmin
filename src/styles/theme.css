@@ -1,0 +1,48 @@
+:root {
+  /* Primary colors */
+  --fma-primary: #1a73e8;
+  --fma-primary-dark: #1557b0;
+  --fma-primary-light: #4a90e2;
+
+  /* Neutral colors */
+  --fma-bg: #f8f9fa;
+  --fma-surface: #ffffff;
+  --fma-border: #dadce0;
+  --fma-text: #202124;
+  --fma-text-secondary: #5f6368;
+
+  /* Status colors */
+  --fma-success: #34a853;
+  --fma-warning: #fbbc04;
+  --fma-error: #d93025;
+
+  /* Layout */
+  --fma-header-height: 56px;
+  --fma-sidebar-width: 260px;
+  --fma-sidebar-collapsed-width: 0px;
+
+  /* Typography */
+  --fma-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fma-font-size-sm: 0.875rem;
+  --fma-font-size-base: 1rem;
+  --fma-font-size-lg: 1.25rem;
+  --fma-font-size-xl: 1.5rem;
+
+  /* Spacing */
+  --fma-space-xs: 0.25rem;
+  --fma-space-sm: 0.5rem;
+  --fma-space-md: 1rem;
+  --fma-space-lg: 1.5rem;
+  --fma-space-xl: 2rem;
+
+  /* Shadows */
+  --fma-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --fma-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.15);
+
+  /* Transitions */
+  --fma-transition: 200ms ease-in-out;
+
+  /* Border radius */
+  --fma-radius: 4px;
+  --fma-radius-lg: 8px;
+}
