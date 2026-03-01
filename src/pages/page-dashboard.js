@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import '../components/connection-dialog.js';
+import '../components/connection-list.js';
 
 export class FmaPageDashboard extends LitElement {
   static properties = {
@@ -72,6 +73,12 @@ export class FmaPageDashboard extends LitElement {
     this._dialogOpen = false;
   }
 
+  _onConnectionSelect(e) {
+    const conn = e.detail;
+    window.history.pushState({}, '', `/firestore/${conn.id}`);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
+
   render() {
     return html`
       <div class="header-row">
@@ -79,10 +86,9 @@ export class FmaPageDashboard extends LitElement {
         <button class="btn-new" @click=${this._openDialog}>+ Nueva conexión</button>
       </div>
 
-      <div class="empty-state">
-        <p>No hay conexiones configuradas.</p>
-        <p>Pulsa "Nueva conexión" para añadir tu primer proyecto Firestore.</p>
-      </div>
+      <fma-connection-list
+        @connection-select=${this._onConnectionSelect}
+      ></fma-connection-list>
 
       <fma-connection-dialog
         ?open=${this._dialogOpen}
