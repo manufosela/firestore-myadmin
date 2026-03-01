@@ -1,5 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { getConnection, getRemoteDb, requireAuth, requireParam } from './connection-utils.js';
+import { getConnection, getRemoteDb, requireAuth, requireParam, requireRole } from './connection-utils.js';
 
 /**
  * Create a document in a remote Firestore collection.
@@ -16,6 +16,7 @@ export const createDocument = onCall(async (request) => {
   }
 
   const connection = await getConnection(connectionId, request.auth.uid);
+  requireRole(connection, 'editor');
   const remoteDb = await getRemoteDb(connectionId, connection);
 
   let docRef;
@@ -48,6 +49,7 @@ export const updateDocument = onCall(async (request) => {
   }
 
   const connection = await getConnection(connectionId, request.auth.uid);
+  requireRole(connection, 'editor');
   const remoteDb = await getRemoteDb(connectionId, connection);
 
   const docRef = remoteDb.doc(documentPath);
@@ -77,6 +79,7 @@ export const deleteDocument = onCall(async (request) => {
   requireParam(documentPath, 'documentPath');
 
   const connection = await getConnection(connectionId, request.auth.uid);
+  requireRole(connection, 'editor');
   const remoteDb = await getRemoteDb(connectionId, connection);
 
   const docRef = remoteDb.doc(documentPath);
