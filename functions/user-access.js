@@ -2,7 +2,24 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { requireAuth, requireParam } from './connection-utils.js';
 
-const SUPERADMIN_EMAIL = 'admin@example.com';
+const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL;
+
+/**
+ * Check whether an email belongs to the configured superadmin.
+ * Fails loudly when SUPERADMIN_EMAIL is missing instead of silently
+ * granting or denying access, and never matches an empty email.
+ * @param {string|undefined} email
+ * @returns {boolean}
+ */
+export function isSuperadminEmail(email) {
+  if (!SUPERADMIN_EMAIL) {
+    throw new HttpsError(
+      'failed-precondition',
+      'SUPERADMIN_EMAIL is not configured. Set it in functions/.env.'
+    );
+  }
+  return Boolean(email) && email === SUPERADMIN_EMAIL;
+}
 
 async function requireSuperadmin(uid) {
   const db = getFirestore();
@@ -14,7 +31,7 @@ async function requireSuperadmin(uid) {
 
 /**
  * Check user access status. Creates record if first login.
- * Superadmin (admin@example.com) is auto-approved.
+ * The configured superadmin (see SUPERADMIN_EMAIL) is auto-approved.
  */
 export const checkUserAccess = onCall(async (request) => {
   requireAuth(request);
@@ -25,7 +42,7 @@ export const checkUserAccess = onCall(async (request) => {
   const doc = await userRef.get();
 
   if (!doc.exists) {
-    const isSuperadmin = email === SUPERADMIN_EMAIL;
+    const isSuperadmin = isSuperadminEmail(email);
     const now = new Date().toISOString();
     const userData = {
       email: email || '',
@@ -42,7 +59,7 @@ export const checkUserAccess = onCall(async (request) => {
   const data = doc.data();
 
   // Ensure superadmin always has correct role
-  if (email === SUPERADMIN_EMAIL && (data.role !== 'superadmin' || data.status !== 'approved')) {
+  if (isSuperadminEmail(email) && (data.role !== 'superadmin' || data.status !== 'approved')) {
     await userRef.update({ role: 'superadmin', status: 'approved' });
     return { status: 'approved', role: 'superadmin', email };
   }
